@@ -5,6 +5,10 @@ type Conversation struct {
 	Messages       []Message `bson:"messages"`
 }
 
+func SetConversationId(conversation *Conversation, conversationid int) {
+	conversation.ConversationId = conversationid
+}
+
 func InsertMessage(conversation *Conversation, msg Message) {
 	conversation.Messages = append(conversation.Messages, msg)
 }
