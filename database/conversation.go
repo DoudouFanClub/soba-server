@@ -1,12 +1,17 @@
 package database
 
-type Conversation struct {
-	ConversationId int       `bson:"id"`
-	Messages       []Message `bson:"messages"`
+type ConversationRequest struct {
+	Username string `bson:"username"`
+	Title    string `bson:"title"`
 }
 
-func SetConversationId(conversation *Conversation, conversationid int) {
-	conversation.ConversationId = conversationid
+type Conversation struct {
+	Title    string    `bson:"title"`
+	Messages []Message `bson:"messages"`
+}
+
+func SetConversationId(conversation *Conversation, title string) {
+	conversation.Title = title
 }
 
 func InsertMessage(conversation *Conversation, msg Message) {

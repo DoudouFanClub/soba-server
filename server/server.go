@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"llm_server/database"
 	"net/http"
 )
@@ -46,5 +47,9 @@ func ReceiveMessage(w http.ResponseWriter, r *http.Request) {
 	var msg database.Message
 
 	err := json.NewDecoder(r.Body).Decode(&msg)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 }

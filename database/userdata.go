@@ -8,9 +8,9 @@ import (
 )
 
 type UserData struct {
-	Username        string `bson:"username"`
-	Password        string `bson:"password"`
-	ConversationIDs []int  `bson:"conversations"`
+	Username        string   `bson:"username"`
+	Password        string   `bson:"password"`
+	ConversationIDs []string `bson:"conversations"`
 }
 
 func (s *MongoInterface) InsertConversationId(username string, conversation Conversation) {
@@ -23,15 +23,15 @@ func (s *MongoInterface) InsertConversationId(username string, conversation Conv
 	if err != nil {
 		fmt.Println("Error: Unable to Insert Conversation Id (User Not Registered):", err)
 	} else {
-		user.ConversationIDs = append(user.ConversationIDs, conversation.ConversationId)
+		user.ConversationIDs = append(user.ConversationIDs, conversation.Title)
 		s.updateUser(username, user.ConversationIDs)
 	}
 }
 
-func removeConversationId(user *UserData, conversationid int) {
+func removeConversationId(user *UserData, title_to_remove string) {
 	index := -1
-	for i, id := range user.ConversationIDs {
-		if id == conversationid {
+	for i, title := range user.ConversationIDs {
+		if title == title_to_remove {
 			index = i
 			break
 		}
@@ -49,7 +49,7 @@ func removeConversationId(user *UserData, conversationid int) {
 	user.ConversationIDs = user.ConversationIDs[:len(user.ConversationIDs)-1]
 }
 
-func (s *MongoInterface) DeleteConversationId(username string, conversationid int) {
+func (s *MongoInterface) DeleteConversationId(username string, title string) {
 	filter := bson.M{"username": username}
 	user_collection := s.MongoClient.Database("UserData").Collection("Users")
 
@@ -59,6 +59,6 @@ func (s *MongoInterface) DeleteConversationId(username string, conversationid in
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		removeConversationId(&user, conversationid)
+		removeConversationId(&user, title)
 	}
 }

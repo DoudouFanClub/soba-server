@@ -65,7 +65,7 @@ func (s *MongoInterface) findUser(username string) *UserData {
 	return nil
 }
 
-func (s *MongoInterface) updateUser(username string, messages []int) error {
+func (s *MongoInterface) updateUser(username string, messages []string) error {
 	filter := bson.M{"username": username}
 	update := bson.M{"$set": bson.M{"conversations": messages}}
 	coll := s.MongoClient.Database("UserData").Collection("Users")
@@ -79,8 +79,8 @@ func (s *MongoInterface) updateUser(username string, messages []int) error {
 	return err
 }
 
-func (s *MongoInterface) findConversation(username string, conversationid int) *Conversation {
-	filter := bson.M{"id": conversationid}
+func (s *MongoInterface) findConversation(username string, title string) *Conversation {
+	filter := bson.M{"title": title}
 	coll := s.MongoClient.Database("ConversationData").Collection(username)
 
 	var convo Conversation
@@ -93,7 +93,7 @@ func (s *MongoInterface) findConversation(username string, conversationid int) *
 }
 
 func (s *MongoInterface) updateConversation(username string, convo Conversation) error {
-	filter := bson.M{"id": convo.ConversationId}
+	filter := bson.M{"title": convo.Title}
 	update := bson.M{"$set": bson.M{"messages": convo.Messages}}
 	coll := s.MongoClient.Database("ConversationData").Collection(username)
 
@@ -111,13 +111,26 @@ func (s *MongoInterface) DoesUserExist(username string) bool {
 	return user != nil
 }
 
+func (s *MongoInterface) DoesConvoExist(username string, title string) bool {
+	convo := s.findConversation(username, title)
+	return convo != nil
+}
+
+func (s *MongoInterface) IsUserLoginValid(userInput UserData) bool {
+	user := s.findUser(userInput.Username)
+	if user == nil {
+		return false
+	}
+	return user.Password == userInput.Password
+}
+
 func (s *MongoInterface) InsertUser(username string, password string) error {
 	coll := s.MongoClient.Database("UserData").Collection("Users")
 
 	data := UserData{
 		Username:        username,
 		Password:        password,
-		ConversationIDs: make([]int, 0),
+		ConversationIDs: make([]string, 0),
 	}
 
 	bsonUserData, err := bson.Marshal(data)
@@ -141,7 +154,7 @@ Inserts or Updates a Pre-Existing Conversation Thread from Redis Cache Data
 Also Appends ConversationId to UserData tied to Username Conversation is newly created
 */
 func (s *MongoInterface) InsertConversation(username string, conversation Conversation) error {
-	convo := s.findConversation(username, conversation.ConversationId)
+	convo := s.findConversation(username, conversation.Title)
 
 	if convo == nil {
 		bsonConvoData, err := bson.Marshal(conversation)
@@ -151,11 +164,9 @@ func (s *MongoInterface) InsertConversation(username string, conversation Conver
 
 		user := s.findUser(username)
 		if user != nil {
-			fmt.Println("insert convo before")
 			coll := s.MongoClient.Database("ConversationData").Collection(username)
 			_, err = coll.InsertOne(context.TODO(), bsonConvoData)
 			s.InsertConversationId(username, conversation)
-			fmt.Println("insert convoid after")
 			if err != nil {
 				return err
 			}
@@ -167,8 +178,8 @@ func (s *MongoInterface) InsertConversation(username string, conversation Conver
 	return nil
 }
 
-func (s *MongoInterface) DeleteConversation(username string, conversationid int) error {
-	filter := bson.M{"id": conversationid}
+func (s *MongoInterface) DeleteConversation(username string, title string) error {
+	filter := bson.M{"title": title}
 	convoCollection := s.MongoClient.Database("ConversationData").Collection(username)
 
 	result, err := convoCollection.DeleteOne(context.TODO(), filter)
@@ -176,19 +187,19 @@ func (s *MongoInterface) DeleteConversation(username string, conversationid int)
 		return err
 	}
 
-	s.DeleteConversationId(username, conversationid)
+	s.DeleteConversationId(username, title)
 
 	if result.DeletedCount == 0 {
-		fmt.Println("Warning: Unable to remove Conversation -", conversationid)
+		fmt.Println("Warning: Unable to remove Conversation -", title)
 	} else if result.DeletedCount > 1 {
-		fmt.Println("Error: Multiple Conversations tied to -", conversationid)
+		fmt.Println("Error: Multiple Conversations tied to -", title)
 	}
 
 	return nil
 }
 
-func (s *MongoInterface) RetrieveConversation(username string, conversationid int) (*Conversation, error) {
-	filter := bson.M{"id": conversationid}
+func (s *MongoInterface) RetrieveConversation(username string, title string) (*Conversation, error) {
+	filter := bson.M{"title": title}
 	convoCollection := s.MongoClient.Database("ConversationData").Collection(username)
 
 	var convo Conversation
@@ -204,8 +215,8 @@ func (s *MongoInterface) RetrieveConversation(username string, conversationid in
 func (s *MongoInterface) RetrieveConversations(user UserData) ([]Conversation, error) {
 	conversations := make([]Conversation, len(user.ConversationIDs))
 
-	for i, convoid := range user.ConversationIDs {
-		convo, err := s.RetrieveConversation(user.Username, convoid)
+	for i, title := range user.ConversationIDs {
+		convo, err := s.RetrieveConversation(user.Username, title)
 		if err != nil {
 			return conversations, err
 		}
@@ -213,9 +224,4 @@ func (s *MongoInterface) RetrieveConversations(user UserData) ([]Conversation, e
 	}
 
 	return conversations, nil
-}
-
-func (s *MongoInterface) GenerateConversationId(user UserData) int {
-	lastConvoId := user.ConversationIDs[len(user.ConversationIDs)-1]
-	return lastConvoId + 1
 }
