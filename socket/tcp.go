@@ -11,12 +11,13 @@ import (
 // Holds the endpoint info incase there is multiple llm instances
 type Endpoint struct {
 	Ip   string
-	Port int
+	Port string
 }
 
 // passes in a reference buffer to read from
 func (e *Endpoint) SendMessage(message []byte, buf *[]byte) bool {
-	conn, err1 := net.Dial("tcp", "localhost:6222")
+
+	conn, err1 := net.Dial("tcp", e.GetAddress())
 	if err1 != nil {
 		fmt.Println(err1)
 		return false
@@ -43,4 +44,8 @@ func (e *Endpoint) SendMessage(message []byte, buf *[]byte) bool {
 		}
 	}
 	return true
+}
+
+func (e *Endpoint) GetAddress() string {
+	return e.Ip + ":" + e.Port
 }
