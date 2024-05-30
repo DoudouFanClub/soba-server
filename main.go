@@ -34,7 +34,7 @@ func main() {
 	}
 
 	convo := database.Conversation{
-		Title:    "My Convo",
+		Title:    "MyConvo",
 		Messages: make([]database.Message, 0),
 	}
 
@@ -48,11 +48,11 @@ func main() {
 	host.MongoClient.InsertUser("jp", "1password")
 	host.MongoClient.InsertConversation("jp", convo)
 
-	red_err := host.RedisClient.LoadConversation(host.MongoClient, "jp", "My Convo")
+	red_err := host.RedisClient.LoadConversation(host.MongoClient, "jp", "MyConvo")
 	if red_err != nil {
 		fmt.Println(err)
 	}
-	host.RedisClient.AddMessageToConversation(host.MongoClient, "jp", "My Convo", database.Message{Role: "mae", Content: "i like to eat kinder bueno"})
+	host.RedisClient.AddMessageToConversation(host.MongoClient, "jp", "MyConvo", database.Message{Role: "mae", Content: "i like to eat kinder bueno"})
 
 	host.Tick()
 

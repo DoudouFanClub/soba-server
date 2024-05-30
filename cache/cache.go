@@ -47,6 +47,7 @@ func (r *RedisCache) LoadConversationBytes(key string, value *[]database.Message
 		fmt.Println(err)
 		return err
 	} else {
+		fmt.Println("adding a message to a conversation")
 		return r.client.Set(context.TODO(), key, messageArrJSONBytes, 0).Err()
 	}
 }
@@ -65,14 +66,14 @@ func (r *RedisCache) LoadConversation(mongoInterface *database.MongoInterface, u
 	return r.LoadConversationBytes(key, &convo.Messages)
 }
 
-func (r *RedisCache) UnloadConversation(username string, conversationId int) error {
-	key := fmt.Sprintf(redisKeyFormat, username, conversationId)
+func (r *RedisCache) UnloadConversation(username string, title string) error {
+	key := fmt.Sprintf(redisKeyFormat, username, title)
 	return r.client.Del(context.TODO(), key).Err()
 }
 
-func (r *RedisCache) AddMessageToConversation(mongoMongoInterface *database.MongoInterface, username string, title string, newMsg database.Message) error {
+func (r *RedisCache) AddMessageToConversation(mongoInterface *database.MongoInterface, username string, title string, newMsg database.Message) error {
 	key := fmt.Sprintf(redisKeyFormat, username, title)
-	msg, err := r.GetDataMsgArray(mongoMongoInterface, username, title)
+	msg, err := r.GetDataMsgArray(mongoInterface, username, title)
 
 	if err != nil {
 		fmt.Println(err)
@@ -83,17 +84,20 @@ func (r *RedisCache) AddMessageToConversation(mongoMongoInterface *database.Mong
 	return r.LoadConversationBytes(key, msg)
 }
 
-func (r *RedisCache) RemoveMessageFromConversation(mongoMongoInterface *database.MongoInterface, username string, title string, newMsg database.Message) error {
+func (r *RedisCache) RemoveMessageFromConversation(mongoInterface *database.MongoInterface, username string, title string, newMsg database.Message) error {
 	return nil
 }
 
 // Note that return type is a Pointer type
 // If memory usage ends up being an issue, we may want to return by copy rather than reference
-func (r *RedisCache) GetDataMsgArray(mongoMongoInterface *database.MongoInterface, username string, title string) (*[]database.Message, error) {
+func (r *RedisCache) GetDataMsgArray(mongoInterface *database.MongoInterface, username string, title string) (*[]database.Message, error) {
 	key := fmt.Sprintf(redisKeyFormat, username, title)
 	val, err := r.client.Get(context.TODO(), key).Bytes()
 
 	if err != nil {
+		fmt.Println("Key:", key)
+		fmt.Println("Value:", val)
+
 		return nil, fmt.Errorf("unable to retrieve conversation: %w", err)
 	}
 	var convo []database.Message
@@ -103,8 +107,8 @@ func (r *RedisCache) GetDataMsgArray(mongoMongoInterface *database.MongoInterfac
 
 // Note that return type is a Pointer type
 // If memory usage ends up being an issue, we may want to return by copy rather than reference
-func (r *RedisCache) GetDataConversation(mongoMongoInterface *database.MongoInterface, username string, title string) (*database.Conversation, error) {
-	convo, err := r.GetDataMsgArray(mongoMongoInterface, username, title)
+func (r *RedisCache) GetDataConversation(mongoInterface *database.MongoInterface, username string, title string) (*database.Conversation, error) {
+	convo, err := r.GetDataMsgArray(mongoInterface, username, title)
 
 	if err != nil {
 		return nil, err

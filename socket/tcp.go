@@ -14,6 +14,9 @@ type Endpoint struct {
 	Port string
 }
 
+/*
+	read up on go channels for connections (fs read set?)
+*/
 // passes in a reference buffer to read from
 func (e *Endpoint) SendMessage(message []byte, buf *[]byte) bool {
 

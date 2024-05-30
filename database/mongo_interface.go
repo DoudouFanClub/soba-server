@@ -141,7 +141,7 @@ func (s *MongoInterface) InsertUser(username string, password string) error {
 
 	user_exist := s.DoesUserExist(username)
 
-	if user_exist == false {
+	if !user_exist {
 		_, err = coll.InsertOne(context.TODO(), bsonUserData)
 		return err
 	}
@@ -183,6 +183,7 @@ func (s *MongoInterface) DeleteConversation(username string, title string) error
 	convoCollection := s.MongoClient.Database("ConversationData").Collection(username)
 
 	result, err := convoCollection.DeleteOne(context.TODO(), filter)
+
 	if err != nil {
 		return err
 	}

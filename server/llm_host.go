@@ -67,7 +67,10 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 		userExist := mongo_svr.DoesUserExist(user.Username)
 
 		if !userExist {
+			fmt.Println("user does not yet exist")
 			mongo_svr.InsertUser(user.Username, user.Password)
+		} else {
+			fmt.Println("user already exists:", user.Username)
 		}
 	})
 
@@ -100,11 +103,18 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 		err := json.NewDecoder(r.Body).Decode(&load_convo)
 
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("Error loading chat: %w", err.Error())
 			return
 		}
 
 		// load the convo into cache
+		convo_exist := mongo_svr.DoesConvoExist(load_convo.Username, load_convo.Title)
+		if convo_exist {
+			fmt.Println("Loaded chat")
+			redis_svr.LoadConversation(mongo_svr, load_convo.Username, load_convo.Title)
+		} else {
+			fmt.Println("Chat does not exist")
+		}
 	})
 
 	http.HandleFunc("/delete_chat", func(w http.ResponseWriter, r *http.Request) {
@@ -112,7 +122,20 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 	})
 
 	http.HandleFunc("/query", func(w http.ResponseWriter, r *http.Request) {
+		var user_prompt database.MessagePrompt
+		err := json.NewDecoder(r.Body).Decode(&user_prompt)
 
+		if err != nil {
+			fmt.Println("Error decoding prompt: %w", err.Error())
+			return
+		}
+
+		redis_svr.AddMessageToConversation(mongo_svr, user_prompt.Username, user_prompt.Title, database.Message{Role: "User", Content: user_prompt.Content})
+
+		// send to LLM
+
+		// Wait and append to cache once done
+		// Also forward the data to frontend
 	})
 
 	return &LLM_Host{
