@@ -5,20 +5,20 @@ import (
 )
 
 type Balancer struct {
-	Availables Queue[socket.Endpoint]
+	availables Queue[socket.Endpoint]
 }
 
 func CreateBalancer() Balancer {
 	q := NewQueue[socket.Endpoint]()
-	return Balancer{Availables: q}
+	return Balancer{availables: q}
 }
 
-func (b *Balancer) CanSend() bool {
-	return b.Availables.Empty()
+func (b *Balancer) Available() bool {
+	return b.availables.Empty()
 }
 
 func (b *Balancer) Send(msg []byte, buf *[]byte) {
-	sender := b.Availables.Pop()
+	sender := b.availables.Pop()
 	sender.SendMessage(msg, buf)
-	b.Availables.Add(sender)
+	b.availables.Add(sender)
 }
