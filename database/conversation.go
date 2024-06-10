@@ -3,6 +3,7 @@ package database
 type ConversationRequest struct {
 	Username string `bson:"username"`
 	Title    string `bson:"title"`
+	// need to add a new field to specify the model
 }
 
 type Conversation struct {

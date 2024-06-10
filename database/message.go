@@ -10,3 +10,7 @@ type MessagePrompt struct {
 	Title    string `bson:"title"`
 	Content  string `bson:"content"`
 }
+
+type FrontendTest struct {
+	Text string `bson:"text"`
+}
