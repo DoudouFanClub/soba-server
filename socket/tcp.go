@@ -6,6 +6,7 @@ import (
 	"io"
 	"llm_server/database"
 	"net"
+	"net/http"
 )
 
 // Holds the endpoint info incase there is multiple llm instances
@@ -18,7 +19,7 @@ type Endpoint struct {
 	read up on go channels for connections (fs read set?)
 */
 // passes in a reference buffer to read from
-func (e *Endpoint) SendMessage(message []byte, buf *[]byte) bool {
+func (e *Endpoint) SendMessage(message []byte, w *http.ResponseWriter) bool {
 
 	conn, err1 := net.Dial("tcp", e.GetAddress())
 	if err1 != nil {
@@ -38,6 +39,7 @@ func (e *Endpoint) SendMessage(message []byte, buf *[]byte) bool {
 	for {
 		var msg database.Message
 		err := decoder.Decode(&msg)
+		http.ResponseWriter.Write(*w, []byte(msg.Content))
 		if err != nil {
 			if err == io.EOF {
 				break
