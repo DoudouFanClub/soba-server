@@ -29,6 +29,21 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 
 	// Init net/http Callbacks
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+        // Set CORS headers to allow requests from all origins
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+
+		// Close the request body after reading from it
+		defer r.Body.Close()
+
+		// Handle preflight OPTIONS requests
+		if r.Method == "OPTIONS" {
+			return
+		}
+
 		var user database.UserData
 		err := json.NewDecoder(r.Body).Decode(&user)
 
@@ -36,6 +51,8 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 			fmt.Println(err)
 			return
 		}
+
+		fmt.Println(user.Username, user.Password, user.ConversationIDs)
 
 		loginValid := mongo_svr.IsUserLoginValid(user)
 
@@ -55,7 +72,51 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 		}
 	})
 
+	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+        // Set CORS headers to allow requests from all origins
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+
+		// Close the request body after reading from it
+		defer r.Body.Close()
+
+		// Handle preflight OPTIONS requests
+		if r.Method == "OPTIONS" {
+			return
+		}
+
+		var convo database.ConversationRequest
+		err := json.NewDecoder(r.Body).Decode(&convo)
+
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		
+
+		// call redis fn clear the cache & store the updated convo into DB
+	})
+
 	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+        // Set CORS headers to allow requests from all origins
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+
+		// Close the request body after reading from it
+		defer r.Body.Close()
+
+		// Handle preflight OPTIONS requests
+		if r.Method == "OPTIONS" {
+			return
+		}
+
 		var user database.UserData
 		err := json.NewDecoder(r.Body).Decode(&user)
 
@@ -66,16 +127,54 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 
 		userExist := mongo_svr.DoesUserExist(user.Username)
 
+		// Create a Response Json Format
+		responseData := map[string]string{};
+
+		// Handle Registration of User
 		if !userExist {
-			fmt.Println("user does not yet exist")
+			fmt.Println("user does not yet exist") // Remove afterwards
+			
 			mongo_svr.InsertUser(user.Username, user.Password)
-		} else {
-			fmt.Println("user already exists:", user.Username)
+			responseData["response"] = "success"
+			} else {
+				fmt.Println("user already exists:", user.Username) // Remove afterwards
+				responseData["response"] = "failure"
+		}
+
+		// Send a response to the frontend
+		jsonResponse, err := json.Marshal(responseData)
+		if err != nil {
+			// Return a 500 Internal Server Error response if there's an error encoding the response data
+			http.Error(w, fmt.Sprintf("Error encoding response: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+
+		// Write the JSON response to the http.ResponseWriter
+		_, err = w.Write(jsonResponse)
+		if err != nil {
+			// Handle the error if unable to write the response
+			fmt.Println("Error writing response:", err)
+			return
 		}
 	})
 
 	http.HandleFunc("/new_chat", func(w http.ResponseWriter, r *http.Request) {
-		// force users to insert their chat name to facilitate loading of conversation titles on the sidebar
+		w.Header().Set("Content-Type", "application/json")
+
+        // Set CORS headers to allow requests from all origins
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+
+		// Close the request body after reading from it
+		defer r.Body.Close()
+
+		// Handle preflight OPTIONS requests
+		if r.Method == "OPTIONS" {
+			return
+		}
+
+		// Force users to insert their chat name to facilitate loading of conversation titles on the sidebar
 		var create_convo database.ConversationRequest
 		err := json.NewDecoder(r.Body).Decode(&create_convo)
 
@@ -98,7 +197,41 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 		}
 	})
 
+	http.HandleFunc("/rename_chat", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+        // Set CORS headers to allow requests from all origins
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+
+		// Close the request body after reading from it
+		defer r.Body.Close()
+
+		// Handle preflight OPTIONS requests
+		if r.Method == "OPTIONS" {
+			return
+		}
+
+
+	})
+
 	http.HandleFunc("/load_chat", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+        // Set CORS headers to allow requests from all origins
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+
+		// Close the request body after reading from it
+		defer r.Body.Close()
+
+		// Handle preflight OPTIONS requests
+		if r.Method == "OPTIONS" {
+			return
+		}
+
 		var load_convo database.ConversationRequest
 		err := json.NewDecoder(r.Body).Decode(&load_convo)
 
@@ -118,10 +251,42 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 	})
 
 	http.HandleFunc("/delete_chat", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 
+        // Set CORS headers to allow requests from all origins
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+
+		// Close the request body after reading from it
+		defer r.Body.Close()
+
+		// Handle preflight OPTIONS requests
+		if r.Method == "OPTIONS" {
+			return
+		}
+
+		// check if loaded in cache
+		//     if yes, clear username_title from cache
+		// clear database
 	})
 
 	http.HandleFunc("/user_query", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+        // Set CORS headers to allow requests from all origins
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+
+		// Close the request body after reading from it
+		defer r.Body.Close()
+
+		// Handle preflight OPTIONS requests
+		if r.Method == "OPTIONS" {
+			return
+		}
+
 		var user_prompt database.MessagePrompt
 		err := json.NewDecoder(r.Body).Decode(&user_prompt)
 
@@ -138,8 +303,52 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 		// Also forward the data to frontend
 	})
 
-	http.HandleFunc("/testpost", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/retrieve_convo_titles", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 
+        // Set CORS headers to allow requests from all origins
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+
+		// Close the request body after reading from it
+		defer r.Body.Close()
+	
+		// Handle preflight OPTIONS requests
+		if r.Method == "OPTIONS" {
+			return
+		}
+
+		var userRequest database.ConversationTitlesRequest
+		err := json.NewDecoder(r.Body).Decode(&userRequest)
+
+		if err != nil {
+			fmt.Println("Error Retrieving Conversation Titles: %w", err.Error())
+			return
+		}
+
+		titles := mongo_svr.RetrieveConversationTitles(userRequest.Username)
+
+		// Send a response to the frontend
+		responseData := map[string]interface{}{"username": userRequest.Username, "titles": titles,}
+		jsonResponse, err := json.Marshal(responseData)
+		if err != nil {
+			// Return a 500 Internal Server Error response if there's an error encoding the response data
+			http.Error(w, fmt.Sprintf("Error encoding response: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+
+		// Write the JSON response to the http.ResponseWriter
+		_, err = w.Write(jsonResponse)
+		if err != nil {
+			// Handle the error if unable to write the response
+			fmt.Println("Error writing response:", err)
+			return
+		}
+	})
+
+	
+	http.HandleFunc("/testpost", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
         // Set CORS headers to allow requests from all origins

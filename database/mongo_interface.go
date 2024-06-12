@@ -226,3 +226,8 @@ func (s *MongoInterface) RetrieveConversations(user UserData) ([]Conversation, e
 
 	return conversations, nil
 }
+
+func (s *MongoInterface) RetrieveConversationTitles(userName string) []string {
+	user := s.findUser(userName)
+	return user.ConversationIDs
+}

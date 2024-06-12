@@ -6,6 +6,11 @@ type ConversationRequest struct {
 	// need to add a new field to specify the model
 }
 
+type ConversationTitlesRequest struct {
+	Username string   `bson:"username"`
+	Titles   []string `bson:"titles"`
+}
+
 type Conversation struct {
 	Title    string    `bson:"title"`
 	Messages []Message `bson:"messages"`
