@@ -116,6 +116,11 @@ func (s *MongoInterface) DoesConvoExist(username string, title string) bool {
 	return convo != nil
 }
 
+func (s *MongoInterface) GetConvo(username string, title string) Conversation {
+	convo := s.findConversation(username, title)
+	return *convo
+}
+
 func (s *MongoInterface) IsUserLoginValid(userInput UserData) bool {
 	user := s.findUser(userInput.Username)
 	if user == nil {

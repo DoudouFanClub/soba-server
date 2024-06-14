@@ -56,19 +56,40 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 
 		loginValid := mongo_svr.IsUserLoginValid(user)
 
+		var loginStatus string
+
 		// Login Invalid, check if wrong password
 		if loginValid {
 			// Load Conversations
 			fmt.Println("Successful login")
+			loginStatus = "success"
 		} else {
 			userExist := mongo_svr.DoesUserExist(user.Username)
 			if userExist {
 				// Prompt user wrong password
 				userExist = true
 				fmt.Println("User exists, BUT incorrect password")
+				loginStatus = "failure"
 			} else {
 				fmt.Println("Would you like to create a new account")
+				loginStatus = "invalid"
 			}
+		}
+
+		responseData := map[string]interface{}{"response": loginStatus,}
+		jsonResponse, err := json.Marshal(responseData)
+		if err != nil {
+			// Return a 500 Internal Server Error response if there's an error encoding the response data
+			http.Error(w, fmt.Sprintf("Error encoding response: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+
+		// Write the JSON response to the http.ResponseWriter
+		_, err = w.Write(jsonResponse)
+		if err != nil {
+			// Handle the error if unable to write the response
+			fmt.Println("Error writing response:", err)
+			return
 		}
 	})
 
@@ -240,13 +261,32 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 			return
 		}
 
-		// load the convo into cache
+		// Load the convo into cache and retreve user's convo
+		var convo database.Conversation
 		convo_exist := mongo_svr.DoesConvoExist(load_convo.Username, load_convo.Title)
 		if convo_exist {
 			fmt.Println("Loaded chat")
 			redis_svr.LoadConversation(mongo_svr, load_convo.Username, load_convo.Title)
+			convo = mongo_svr.GetConvo(load_convo.Username, load_convo.Title)
 		} else {
 			fmt.Println("Chat does not exist")
+		}
+
+		// Send a response to the frontend
+		//responseData := map[string]interface{}{"response": convo.Messages,}
+		jsonResponse, err := json.Marshal(convo)
+		if err != nil {
+			// Return a 500 Internal Server Error response if there's an error encoding the response data
+			http.Error(w, fmt.Sprintf("Error encoding response: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+
+		// Write the JSON response to the http.ResponseWriter
+		_, err = w.Write(jsonResponse)
+		if err != nil {
+			// Handle the error if unable to write the response
+			fmt.Println("Error writing response:", err)
+			return
 		}
 	})
 
@@ -330,7 +370,7 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 		titles := mongo_svr.RetrieveConversationTitles(userRequest.Username)
 
 		// Send a response to the frontend
-		responseData := map[string]interface{}{"username": userRequest.Username, "titles": titles,}
+		responseData := map[string]interface{}{"response": titles,}
 		jsonResponse, err := json.Marshal(responseData)
 		if err != nil {
 			// Return a 500 Internal Server Error response if there's an error encoding the response data
