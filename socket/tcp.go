@@ -15,16 +15,14 @@ type Endpoint struct {
 	Port string
 }
 
-/*
-	read up on go channels for connections (fs read set?)
-*/
 // passes in a reference buffer to read from
-func (e *Endpoint) SendMessage(message []byte, w *http.ResponseWriter) bool {
+func (e *Endpoint) SendMessage(message []byte, w *http.ResponseWriter) (bool, string) {
 
+	result := ""
 	conn, err1 := net.Dial("tcp", e.GetAddress())
 	if err1 != nil {
 		fmt.Println(err1)
-		return false
+		return false, ""
 	}
 
 	defer conn.Close()
@@ -32,7 +30,7 @@ func (e *Endpoint) SendMessage(message []byte, w *http.ResponseWriter) bool {
 	_, err2 := conn.Write(message)
 	if err2 != nil {
 		fmt.Println(err2)
-		return false
+		return false, ""
 	}
 
 	decoder := json.NewDecoder(conn)
@@ -40,15 +38,16 @@ func (e *Endpoint) SendMessage(message []byte, w *http.ResponseWriter) bool {
 		var msg database.Message
 		err := decoder.Decode(&msg)
 		http.ResponseWriter.Write(*w, []byte(msg.Content))
+		result += msg.Content
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
 			fmt.Println(err)
-			return false
+			return false, ""
 		}
 	}
-	return true
+	return true, result
 }
 
 func (e *Endpoint) GetAddress() string {

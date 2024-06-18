@@ -18,8 +18,12 @@ func (b *Balancer) Available() bool {
 	return b.availables.Empty()
 }
 
-func (b *Balancer) Send(msg []byte, w *http.ResponseWriter) {
+func (b *Balancer) Send(msg []byte, w *http.ResponseWriter) (bool, string) {
 	sender := b.availables.Pop()
-	sender.SendMessage(msg, w)
+	success, result := sender.SendMessage(msg, w)
+	if !success {
+		return false, ""
+	}
 	b.availables.Add(sender)
+	return true, result
 }

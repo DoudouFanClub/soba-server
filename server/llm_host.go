@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"llm_server/balancer"
 	"llm_server/cache"
 	"llm_server/database"
 	"net/http"
@@ -12,6 +13,8 @@ type LLM_Host struct {
 	MongoClient *database.MongoInterface
 	RedisClient *cache.RedisCache
 }
+
+var b = balancer.CreateBalancer()
 
 func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db int) (*LLM_Host, error) {
 
@@ -31,10 +34,10 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-        // Set CORS headers to allow requests from all origins
-        w.Header().Set("Access-Control-Allow-Origin", "*")
-        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		// Set CORS headers to allow requests from all origins
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
@@ -76,7 +79,7 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 			}
 		}
 
-		responseData := map[string]interface{}{"response": loginStatus,}
+		responseData := map[string]interface{}{"response": loginStatus}
 		jsonResponse, err := json.Marshal(responseData)
 		if err != nil {
 			// Return a 500 Internal Server Error response if there's an error encoding the response data
@@ -96,10 +99,10 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-        // Set CORS headers to allow requests from all origins
-        w.Header().Set("Access-Control-Allow-Origin", "*")
-        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		// Set CORS headers to allow requests from all origins
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
@@ -117,18 +120,16 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 			return
 		}
 
-		
-
 		// call redis fn clear the cache & store the updated convo into DB
 	})
 
 	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-        // Set CORS headers to allow requests from all origins
-        w.Header().Set("Access-Control-Allow-Origin", "*")
-        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		// Set CORS headers to allow requests from all origins
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
@@ -149,17 +150,17 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 		userExist := mongo_svr.DoesUserExist(user.Username)
 
 		// Create a Response Json Format
-		responseData := map[string]string{};
+		responseData := map[string]string{}
 
 		// Handle Registration of User
 		if !userExist {
 			fmt.Println("user does not yet exist") // Remove afterwards
-			
+
 			mongo_svr.InsertUser(user.Username, user.Password)
 			responseData["response"] = "success"
-			} else {
-				fmt.Println("user already exists:", user.Username) // Remove afterwards
-				responseData["response"] = "failure"
+		} else {
+			fmt.Println("user already exists:", user.Username) // Remove afterwards
+			responseData["response"] = "failure"
 		}
 
 		// Send a response to the frontend
@@ -182,10 +183,10 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 	http.HandleFunc("/new_chat", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-        // Set CORS headers to allow requests from all origins
-        w.Header().Set("Access-Control-Allow-Origin", "*")
-        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		// Set CORS headers to allow requests from all origins
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
@@ -221,10 +222,10 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 	http.HandleFunc("/rename_chat", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-        // Set CORS headers to allow requests from all origins
-        w.Header().Set("Access-Control-Allow-Origin", "*")
-        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		// Set CORS headers to allow requests from all origins
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
@@ -234,16 +235,15 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 			return
 		}
 
-
 	})
 
 	http.HandleFunc("/load_chat", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-        // Set CORS headers to allow requests from all origins
-        w.Header().Set("Access-Control-Allow-Origin", "*")
-        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		// Set CORS headers to allow requests from all origins
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
@@ -293,10 +293,10 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 	http.HandleFunc("/delete_chat", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-        // Set CORS headers to allow requests from all origins
-        w.Header().Set("Access-Control-Allow-Origin", "*")
-        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		// Set CORS headers to allow requests from all origins
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
@@ -314,10 +314,10 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 	http.HandleFunc("/user_query", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-        // Set CORS headers to allow requests from all origins
-        w.Header().Set("Access-Control-Allow-Origin", "*")
-        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		// Set CORS headers to allow requests from all origins
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
@@ -338,22 +338,27 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 		redis_svr.AddMessageToConversation(mongo_svr, user_prompt.Username, user_prompt.Title, database.Message{Role: "User", Content: user_prompt.Content})
 
 		// send to LLM
-
+		success, result := ReceiveMessage(&w, r, &b)
 		// Wait and append to cache once done
-		// Also forward the data to frontend
+		if success {
+			redis_svr.AddMessageToConversation(mongo_svr, user_prompt.Username, user_prompt.Title, database.Message{Role: "assistant", Content: result})
+		} else {
+			fmt.Println("noob")
+		}
+
 	})
 
 	http.HandleFunc("/retrieve_convo_titles", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-        // Set CORS headers to allow requests from all origins
-        w.Header().Set("Access-Control-Allow-Origin", "*")
-        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		// Set CORS headers to allow requests from all origins
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
-	
+
 		// Handle preflight OPTIONS requests
 		if r.Method == "OPTIONS" {
 			return
@@ -370,7 +375,7 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 		titles := mongo_svr.RetrieveConversationTitles(userRequest.Username)
 
 		// Send a response to the frontend
-		responseData := map[string]interface{}{"response": titles,}
+		responseData := map[string]interface{}{"response": titles}
 		jsonResponse, err := json.Marshal(responseData)
 		if err != nil {
 			// Return a 500 Internal Server Error response if there's an error encoding the response data
@@ -387,14 +392,13 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 		}
 	})
 
-	
 	http.HandleFunc("/testpost", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-        // Set CORS headers to allow requests from all origins
-        w.Header().Set("Access-Control-Allow-Origin", "*")
-        //w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		// Set CORS headers to allow requests from all origins
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
@@ -413,12 +417,8 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 			fmt.Println("returning cause of an error gg", r.Body)
 			return
 		}
-		
+
 		fmt.Println("Received an input:", user_prompt.Text)
-
-
-
-
 
 		// Send a response to the frontend
 		responseData := map[string]string{"message": "Data received successfully"}
@@ -436,7 +436,6 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 			fmt.Println("Error writing response:", err)
 			return
 		}
-
 
 		// send to LLM
 
