@@ -207,15 +207,36 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 
 		convo_exist := mongo_svr.DoesConvoExist(create_convo.Username, create_convo.Title)
 
+		// Create a Response Json Format
+		responseData := map[string]string{};
+
 		if !convo_exist {
 			convo := database.Conversation{
 				Title:    create_convo.Title,
 				Messages: make([]database.Message, 0),
 			}
 			mongo_svr.InsertConversation(create_convo.Username, convo)
+			responseData["response"] = "success"
 			fmt.Println("Created a new conversation")
 		} else {
 			fmt.Println("Conversation already exists")
+			responseData["response"] = "failure"
+		}
+
+		// Send a response to the frontend
+		jsonResponse, err := json.Marshal(responseData)
+		if err != nil {
+			// Return a 500 Internal Server Error response if there's an error encoding the response data
+			http.Error(w, fmt.Sprintf("Error encoding response: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+
+		// Write the JSON response to the http.ResponseWriter
+		_, err = w.Write(jsonResponse)
+		if err != nil {
+			// Handle the error if unable to write the response
+			fmt.Println("Error writing response:", err)
+			return
 		}
 	})
 
@@ -311,7 +332,7 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 		// clear database
 	})
 
-	http.HandleFunc("/user_query", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/send_message", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		// Set CORS headers to allow requests from all origins
@@ -327,13 +348,16 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 			return
 		}
 
+		
 		var user_prompt database.MessagePrompt
 		err := json.NewDecoder(r.Body).Decode(&user_prompt)
-
+		
 		if err != nil {
 			fmt.Println("Error decoding prompt: %w", err.Error())
 			return
 		}
+
+		fmt.Println("helloz we have received da prompt", user_prompt.Content)
 
 		redis_svr.AddMessageToConversation(mongo_svr, user_prompt.Username, user_prompt.Title, database.Message{Role: "User", Content: user_prompt.Content})
 
