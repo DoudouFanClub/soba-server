@@ -1,18 +1,9 @@
 package main
 
 /*
-Database Structure
-	UserData
-		User1 Struct
-		User2 Struct
-	ConversationData
-		User1 Username String
-			0
-			1
-			2
-		User2 Username String
-			0
-			1
+To Do (21/6/24):
+- Need to verify whether LoadChat checks whether a chat is current loaded
+  - If there is a chat then we need to unload and save it to the database before loading in a new chat
 */
 
 import (

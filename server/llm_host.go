@@ -32,12 +32,7 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 
 	// Init net/http Callbacks
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		// Set CORS headers to allow requests from all origins
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		AllowCors(w)
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
@@ -71,38 +66,23 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 			if userExist {
 				// Prompt user wrong password
 				userExist = true
-				fmt.Println("User exists, BUT incorrect password")
 				loginStatus = "failure"
 			} else {
-				fmt.Println("Would you like to create a new account")
 				loginStatus = "invalid"
 			}
 		}
 
-		responseData := map[string]interface{}{"response": loginStatus}
-		jsonResponse, err := json.Marshal(responseData)
-		if err != nil {
-			// Return a 500 Internal Server Error response if there's an error encoding the response data
-			http.Error(w, fmt.Sprintf("Error encoding response: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
-
-		// Write the JSON response to the http.ResponseWriter
-		_, err = w.Write(jsonResponse)
-		if err != nil {
-			// Handle the error if unable to write the response
-			fmt.Println("Error writing response:", err)
-			return
+		// Respond to the Frontend that Login was "loginStatus"
+		successfulWrite := ParseJson(w, map[string]interface{}{"response": loginStatus})
+		if successfulWrite {
+			fmt.Println("Successfully logged in:", user.Username)
+		} else {
+			fmt.Println("Failed to log in:", user.Username)
 		}
 	})
 
 	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		// Set CORS headers to allow requests from all origins
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		AllowCors(w)
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
@@ -120,16 +100,31 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 			return
 		}
 
-		// call redis fn clear the cache & store the updated convo into DB
+		// Unload the Redis Cache for "Useranme"
+		// And updates the MongoDB with the latest conversation
+		var updatedDatabaseOnLogout bool
+		redisConversation, err := redis_svr.GetDataConversation(mongo_svr, convo.Username, convo.Title)
+		if err != nil {
+			fmt.Println("Warning: Unable to retrieve conversation from Redis Cache to update Database: ", convo.Title)
+			fmt.Println(err)
+			updatedDatabaseOnLogout = false
+		} else {
+			mongo_svr.InsertConversation(convo.Username, *redisConversation)
+			redis_svr.UnloadConversation(convo.Username, convo.Title)
+			updatedDatabaseOnLogout = true
+		}
+		
+		// Respond to the Frontend that Login was "loginStatus"
+		successfulWrite := ParseJson(w, map[string]interface{}{"response": updatedDatabaseOnLogout})
+		if successfulWrite {
+			fmt.Println("Successfully logged out:", convo.Username)
+		} else {
+			fmt.Println("Failed to log in:", convo.Username)
+		}
 	})
 
 	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		// Set CORS headers to allow requests from all origins
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		AllowCors(w)
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
@@ -150,43 +145,30 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 		userExist := mongo_svr.DoesUserExist(user.Username)
 
 		// Create a Response Json Format
-		responseData := map[string]string{}
+		var serverResponse string
 
 		// Handle Registration of User
 		if !userExist {
 			fmt.Println("user does not yet exist") // Remove afterwards
 
 			mongo_svr.InsertUser(user.Username, user.Password)
-			responseData["response"] = "success"
+			serverResponse = "success"
 		} else {
 			fmt.Println("user already exists:", user.Username) // Remove afterwards
-			responseData["response"] = "failure"
+			serverResponse = "failure"
 		}
 
 		// Send a response to the frontend
-		jsonResponse, err := json.Marshal(responseData)
-		if err != nil {
-			// Return a 500 Internal Server Error response if there's an error encoding the response data
-			http.Error(w, fmt.Sprintf("Error encoding response: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
-
-		// Write the JSON response to the http.ResponseWriter
-		_, err = w.Write(jsonResponse)
-		if err != nil {
-			// Handle the error if unable to write the response
-			fmt.Println("Error writing response:", err)
-			return
+		successfulWrite := ParseJson(w, map[string]interface{}{"response": serverResponse})
+		if successfulWrite {
+			fmt.Println("Successfully logged in:", user.Username)
+		} else {
+			fmt.Println("Failed to log in:", user.Username)
 		}
 	})
 
 	http.HandleFunc("/new_chat", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		// Set CORS headers to allow requests from all origins
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		AllowCors(w)
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
@@ -208,7 +190,7 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 		convo_exist := mongo_svr.DoesConvoExist(create_convo.Username, create_convo.Title)
 
 		// Create a Response Json Format
-		responseData := map[string]string{};
+		var serverResponse string
 
 		if !convo_exist {
 			convo := database.Conversation{
@@ -216,37 +198,24 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 				Messages: make([]database.Message, 0),
 			}
 			mongo_svr.InsertConversation(create_convo.Username, convo)
-			responseData["response"] = "success"
+			serverResponse = "success"
 			fmt.Println("Created a new conversation")
 		} else {
 			fmt.Println("Conversation already exists")
-			responseData["response"] = "failure"
+			serverResponse = "failure"
 		}
 
 		// Send a response to the frontend
-		jsonResponse, err := json.Marshal(responseData)
-		if err != nil {
-			// Return a 500 Internal Server Error response if there's an error encoding the response data
-			http.Error(w, fmt.Sprintf("Error encoding response: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
-
-		// Write the JSON response to the http.ResponseWriter
-		_, err = w.Write(jsonResponse)
-		if err != nil {
-			// Handle the error if unable to write the response
-			fmt.Println("Error writing response:", err)
-			return
+		successfulWrite := ParseJson(w, map[string]interface{}{"response": serverResponse})
+		if successfulWrite {
+			fmt.Println("Successfully logged in:", create_convo.Username)
+		} else {
+			fmt.Println("Failed to log in:", create_convo.Username)
 		}
 	})
 
 	http.HandleFunc("/rename_chat", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		// Set CORS headers to allow requests from all origins
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		AllowCors(w)
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
@@ -259,12 +228,7 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 	})
 
 	http.HandleFunc("/load_chat", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		// Set CORS headers to allow requests from all origins
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		AllowCors(w)
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
@@ -294,30 +258,16 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 		}
 
 		// Send a response to the frontend
-		//responseData := map[string]interface{}{"response": convo.Messages,}
-		jsonResponse, err := json.Marshal(convo)
-		if err != nil {
-			// Return a 500 Internal Server Error response if there's an error encoding the response data
-			http.Error(w, fmt.Sprintf("Error encoding response: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
-
-		// Write the JSON response to the http.ResponseWriter
-		_, err = w.Write(jsonResponse)
-		if err != nil {
-			// Handle the error if unable to write the response
-			fmt.Println("Error writing response:", err)
-			return
+		successfulWrite := ParseJson(w, map[string]interface{}{"response": convo})
+		if successfulWrite {
+			fmt.Println("Successfully retrieved conversation for:", load_convo.Username, "  |  Title:", load_convo.Title)
+		} else {
+			fmt.Println("Failed to retrieve conversation for:", load_convo.Username, "  |  Title:", load_convo.Title)
 		}
 	})
 
 	http.HandleFunc("/delete_chat", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		// Set CORS headers to allow requests from all origins
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		AllowCors(w)
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
@@ -333,12 +283,7 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 	})
 
 	http.HandleFunc("/send_message", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		// Set CORS headers to allow requests from all origins
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		AllowCors(w)
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
@@ -349,19 +294,19 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 		}
 
 		
-		var user_prompt database.MessagePrompt
+		var user_prompt database.FrontendMessagesPrompt
 		err := json.NewDecoder(r.Body).Decode(&user_prompt)
 		
 		if err != nil {
 			fmt.Println("Error decoding prompt: %w", err.Error())
 			return
 		}
+		
+		// Retrieve the last message (User Prompt) & Insert it into Redis Cache
+		LastUserPrompt := user_prompt.Contents[len(user_prompt.Contents) - 1].Content
+		redis_svr.AddMessageToConversation(mongo_svr, user_prompt.Username, user_prompt.Title, database.Message{Role: "User", Content: LastUserPrompt})
 
-		fmt.Println("helloz we have received da prompt", user_prompt.Content)
-
-		redis_svr.AddMessageToConversation(mongo_svr, user_prompt.Username, user_prompt.Title, database.Message{Role: "User", Content: user_prompt.Content})
-
-		// send to LLM
+		// Send to LLM
 		success, result := ReceiveMessage(&w, r, &b)
 		// Wait and append to cache once done
 		if success {
@@ -370,15 +315,11 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 			fmt.Println("noob")
 		}
 
+		// Still need to use http.writer to respond
 	})
 
 	http.HandleFunc("/retrieve_convo_titles", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		// Set CORS headers to allow requests from all origins
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+		AllowCors(w)
 
 		// Close the request body after reading from it
 		defer r.Body.Close()
@@ -399,72 +340,12 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 		titles := mongo_svr.RetrieveConversationTitles(userRequest.Username)
 
 		// Send a response to the frontend
-		responseData := map[string]interface{}{"response": titles}
-		jsonResponse, err := json.Marshal(responseData)
-		if err != nil {
-			// Return a 500 Internal Server Error response if there's an error encoding the response data
-			http.Error(w, fmt.Sprintf("Error encoding response: %s", err.Error()), http.StatusInternalServerError)
-			return
+		successfulWrite := ParseJson(w, map[string]interface{}{"response": titles})
+		if successfulWrite {
+			fmt.Println("Successfully retrieved conversation titles for:", userRequest.Username)
+		} else {
+			fmt.Println("Failed to retrieve conversation for:", userRequest.Username)
 		}
-
-		// Write the JSON response to the http.ResponseWriter
-		_, err = w.Write(jsonResponse)
-		if err != nil {
-			// Handle the error if unable to write the response
-			fmt.Println("Error writing response:", err)
-			return
-		}
-	})
-
-	http.HandleFunc("/testpost", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		// Set CORS headers to allow requests from all origins
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
-
-		// Close the request body after reading from it
-		defer r.Body.Close()
-
-		// Handle preflight OPTIONS requests
-		if r.Method == "OPTIONS" {
-			return
-		}
-
-		var user_prompt database.FrontendTest
-		err := json.NewDecoder(r.Body).Decode(&user_prompt)
-
-		if err != nil {
-			fmt.Println("Error decoding prompt: %w", err.Error())
-			fmt.Println(user_prompt)
-			fmt.Println("returning cause of an error gg", r.Body)
-			return
-		}
-
-		fmt.Println("Received an input:", user_prompt.Text)
-
-		// Send a response to the frontend
-		responseData := map[string]string{"message": "Data received successfully"}
-		jsonResponse, err := json.Marshal(responseData)
-		if err != nil {
-			// Return a 500 Internal Server Error response if there's an error encoding the response data
-			http.Error(w, fmt.Sprintf("Error encoding response: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
-
-		// Write the JSON response to the http.ResponseWriter
-		_, err = w.Write(jsonResponse)
-		if err != nil {
-			// Handle the error if unable to write the response
-			fmt.Println("Error writing response:", err)
-			return
-		}
-
-		// send to LLM
-
-		// Wait and append to cache once done
-		// Also forward the data to frontend
 	})
 
 	return &LLM_Host{

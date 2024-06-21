@@ -11,6 +11,8 @@ type MessagePrompt struct {
 	Content  string `bson:"content"`
 }
 
-type FrontendTest struct {
-	Text string `bson:"text"`
+type FrontendMessagesPrompt struct {
+	Username string    `bson:"username"`
+	Title    string    `bson:"title"`
+	Contents []Message `bson:"contents"`
 }
