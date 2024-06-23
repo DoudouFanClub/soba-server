@@ -13,52 +13,56 @@ type UserData struct {
 	ConversationIDs []string `bson:"conversations"`
 }
 
-func (s *MongoInterface) InsertConversationId(username string, conversation Conversation) {
+// Adds a conversation ID to a user's list of conversation IDs
+func (s *MongoInterface) InsertConversationId(username string, conversation Conversation) error {
 	filter := bson.M{"username": username}
-	user_collection := s.MongoClient.Database("UserData").Collection("Users")
+	userCollection := s.MongoClient.Database("UserData").Collection("Users")
 
 	var user UserData
-	err := user_collection.FindOne(context.TODO(), filter).Decode(&user)
-
+	err := userCollection.FindOne(context.TODO(), filter).Decode(&user)
 	if err != nil {
-		fmt.Println("Error: Unable to Insert Conversation Id (User Not Registered):", err)
-	} else {
-		user.ConversationIDs = append(user.ConversationIDs, conversation.Title)
-		s.updateUser(username, user.ConversationIDs)
+		return fmt.Errorf("unable to insert conversation ID (user not registered): %w", err)
 	}
+
+	user.ConversationIDs = append(user.ConversationIDs, conversation.Title)
+	return s.updateUser(username, user.ConversationIDs)
 }
 
-func removeConversationId(user *UserData, title_to_remove string) {
+// Removes a conversation ID from a user's list of conversation IDs
+func removeConversationId(user *UserData, titleToRemove string) error {
 	index := -1
 	for i, title := range user.ConversationIDs {
-		if title == title_to_remove {
+		if title == titleToRemove {
 			index = i
 			break
 		}
 	}
 
 	if index == -1 {
-		fmt.Println("Error: Attempting to remove a Conversation that was NOT within UserData")
-		return
+		return fmt.Errorf("attempting to remove a conversation that was not found in user data")
 	}
 
-	// Shift Elements to the Left
+	// Remove the conversation ID by shifting elements to the left and reducing the slice size by 1.
 	copy(user.ConversationIDs[index:], user.ConversationIDs[index+1:])
-
-	// Reduce size by 1
 	user.ConversationIDs = user.ConversationIDs[:len(user.ConversationIDs)-1]
+	return nil
 }
 
-func (s *MongoInterface) DeleteConversationId(username string, title string) {
+// Removes a conversation ID from a user's list of conversation IDs in MongoDB
+func (s *MongoInterface) DeleteConversationId(username string, title string) error {
 	filter := bson.M{"username": username}
-	user_collection := s.MongoClient.Database("UserData").Collection("Users")
+	userCollection := s.MongoClient.Database("UserData").Collection("Users")
 
 	var user UserData
-	err := user_collection.FindOne(context.TODO(), filter).Decode(&user)
-
+	err := userCollection.FindOne(context.TODO(), filter).Decode(&user)
 	if err != nil {
-		fmt.Println(err)
-	} else {
-		removeConversationId(&user, title)
+		return fmt.Errorf("failed to find user: %w", err)
 	}
+
+	err = removeConversationId(&user, title)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

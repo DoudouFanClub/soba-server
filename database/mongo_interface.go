@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -11,60 +10,43 @@ import (
 )
 
 type MongoInterface struct {
-	MongoOptions *options.ClientOptions
 	MongoClient  *mongo.Client
 }
 
-/*
-Creates a MongoDB MongoInterface
+// Creates a new MongoDB client.
+func CreateMongoInterface(uri string) (*MongoInterface, error) {
+	clientOptions := options.Client().ApplyURI(uri)
 
-Input:
-
-	uri: MongoInterface connection string e.g. "mongodb://localhost:27017/"
-
-Output:
-
-	*mongo.Client
-	Error Message
-*/
-func CreateMongoMongoInterface(uri string) (*MongoInterface, error) {
-	MongoInterfaceAPI := options.ServerAPI(options.ServerAPIVersion1)
-	opts := options.Client().ApplyURI(uri).SetServerAPIOptions(MongoInterfaceAPI)
-
-	// Create a new client and connect to the MongoInterface
-	client, err := mongo.Connect(context.TODO(), opts)
-
-	MongoInterface := MongoInterface{
-		MongoOptions: opts,
-		MongoClient:  client,
-	}
-
+	client, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
-		fmt.Println(err)
-		return nil, err
+		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
 	}
 
-	return &MongoInterface, err
+	return &MongoInterface{
+		MongoClient: client,
+	}, nil
 }
 
+// Disconnects the MongoDB client
 func (s *MongoInterface) Terminate() error {
 	return s.MongoClient.Disconnect(context.TODO())
 }
 
-func (s *MongoInterface) findUser(username string) *UserData {
+// Retrieves a user from MongoDB by username
+func (s *MongoInterface) findUser(username string) (*UserData, error) {
 	filter := bson.M{"username": username}
 	coll := s.MongoClient.Database("UserData").Collection("Users")
 
 	var user UserData
 	err := coll.FindOne(context.TODO(), filter).Decode(&user)
-
-	if err == nil {
-		return &user
+	if err != nil {
+		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 
-	return nil
+	return &user, nil
 }
 
+// Updates user messages in MongoDB
 func (s *MongoInterface) updateUser(username string, messages []string) error {
 	filter := bson.M{"username": username}
 	update := bson.M{"$set": bson.M{"conversations": messages}}
@@ -72,63 +54,86 @@ func (s *MongoInterface) updateUser(username string, messages []string) error {
 
 	result, err := coll.UpdateOne(context.TODO(), filter, update)
 
-	if result.ModifiedCount > 1 || result.ModifiedCount == 0 {
-		return fmt.Errorf(username, "may have generated duplicates of ConversationIDs: %w", os.ErrInvalid)
+	if err != nil {
+		return fmt.Errorf("failed to update user: %w", err)
 	}
 
-	return err
-}
-
-func (s *MongoInterface) findConversation(username string, title string) *Conversation {
-	filter := bson.M{"title": title}
-	coll := s.MongoClient.Database("ConversationData").Collection(username)
-
-	var convo Conversation
-	err := coll.FindOne(context.TODO(), filter).Decode(&convo)
-	if err == nil {
-		return &convo
+	if result.ModifiedCount != 1 {
+		return fmt.Errorf("expected 1 document to be modified, got %d", result.ModifiedCount)
 	}
 
 	return nil
 }
 
+// findConversation retrieves a conversation from MongoDB by title under a user's collection.
+func (s *MongoInterface) findConversation(username string, title string) (*Conversation, error) {
+	filter := bson.M{"title": title}
+	coll := s.MongoClient.Database("ConversationData").Collection(username)
+
+	var convo Conversation
+	err := coll.FindOne(context.TODO(), filter).Decode(&convo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find conversation: %w", err)
+	}
+
+	return &convo, nil
+}
+
+// Updates a conversation in MongoDB
 func (s *MongoInterface) updateConversation(username string, convo Conversation) error {
 	filter := bson.M{"title": convo.Title}
 	update := bson.M{"$set": bson.M{"messages": convo.Messages}}
 	coll := s.MongoClient.Database("ConversationData").Collection(username)
 
 	result, err := coll.UpdateOne(context.TODO(), filter, update)
-
-	if result.ModifiedCount > 1 || result.ModifiedCount == 0 {
-		return fmt.Errorf(username, "may have inserted duplicates of ConversationData: %w", os.ErrInvalid)
+	if err != nil {
+		return fmt.Errorf("failed to update conversation: %w", err)
 	}
 
-	return err
+	if result.ModifiedCount != 1 {
+		return fmt.Errorf("expected 1 document to be modified, got %d", result.ModifiedCount)
+	}
+
+	return nil
 }
 
+// Checks if a user exists in MongoDB
 func (s *MongoInterface) DoesUserExist(username string) bool {
-	user := s.findUser(username)
+	user, err := s.findUser(username)
+	if err != nil {
+		return false
+	}
 	return user != nil
 }
 
+// Checks if a conversation topic exists
 func (s *MongoInterface) DoesConvoExist(username string, title string) bool {
-	convo := s.findConversation(username, title)
+	convo, err := s.findConversation(username, title)
+	if err != nil {
+		return false
+	}
 	return convo != nil
 }
 
+// Retrieves a conversation from Username
 func (s *MongoInterface) GetConvo(username string, title string) Conversation {
-	convo := s.findConversation(username, title)
+	convo, err := s.findConversation(username, title)
+	if err != nil {
+		return Conversation{}
+	}
 	return *convo
 }
 
+// Verifies whether the User's login is valid
 func (s *MongoInterface) IsUserLoginValid(userInput UserData) bool {
-	user := s.findUser(userInput.Username)
-	if user == nil {
+	user, err := s.findUser(userInput.Username)
+	if err != nil || user == nil {
 		return false
 	}
 	return user.Password == userInput.Password
 }
 
+// Inserts a new User into MongoDB upon successful registration
 func (s *MongoInterface) InsertUser(username string, password string) error {
 	coll := s.MongoClient.Database("UserData").Collection("Users")
 
@@ -153,27 +158,28 @@ func (s *MongoInterface) InsertUser(username string, password string) error {
 	return nil
 }
 
-/*
-Inserts or Updates a Pre-Existing Conversation Thread from Redis Cache Data
-
-Also Appends ConversationId to UserData tied to Username Conversation is newly created
-*/
+// Inserts or updates an existing conversation in MongoDB
 func (s *MongoInterface) InsertConversation(username string, conversation Conversation) error {
-	convo := s.findConversation(username, conversation.Title)
+	convo, _ := s.findConversation(username, conversation.Title)
 
+	// Just insert if it doesn't yet exist
+	// Else, update it
 	if convo == nil {
 		bsonConvoData, err := bson.Marshal(conversation)
 		if err != nil {
 			return err
 		}
 
-		user := s.findUser(username)
+		user, _ := s.findUser(username)
 		if user != nil {
 			coll := s.MongoClient.Database("ConversationData").Collection(username)
 			_, err = coll.InsertOne(context.TODO(), bsonConvoData)
-			s.InsertConversationId(username, conversation)
 			if err != nil {
-				return err
+				return fmt.Errorf("unable to insert new conversation to user in ConversationData: %w", err)
+			}
+			err = s.InsertConversationId(username, conversation)
+			if err != nil {
+				return fmt.Errorf("unable to insert new conversation to user in UserData: %w", err)
 			}
 		}
 	} else {
@@ -183,27 +189,31 @@ func (s *MongoInterface) InsertConversation(username string, conversation Conver
 	return nil
 }
 
+// Deletes a conversation from MongoDB
 func (s *MongoInterface) DeleteConversation(username string, title string) error {
 	filter := bson.M{"title": title}
 	convoCollection := s.MongoClient.Database("ConversationData").Collection(username)
 
+	// Removes the Conversation from Username
 	result, err := convoCollection.DeleteOne(context.TODO(), filter)
-
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete conversation: %w", err)
+	}
+	
+	// Removes the TitleId attached to the UserData
+	err = s.DeleteConversationId(username, title)
+	if err != nil {
+		return fmt.Errorf("unable to remove conversation id from user %w", err)
 	}
 
-	s.DeleteConversationId(username, title)
-
-	if result.DeletedCount == 0 {
-		fmt.Println("Warning: Unable to remove Conversation -", title)
-	} else if result.DeletedCount > 1 {
-		fmt.Println("Error: Multiple Conversations tied to -", title)
+	if result.DeletedCount != 1 {
+		return fmt.Errorf("expected 1 document to be deleted, got %d", result.DeletedCount)
 	}
 
 	return nil
 }
 
+// Retrieves a Conversation from a User based on the Title
 func (s *MongoInterface) RetrieveConversation(username string, title string) (*Conversation, error) {
 	filter := bson.M{"title": title}
 	convoCollection := s.MongoClient.Database("ConversationData").Collection(username)
@@ -218,13 +228,14 @@ func (s *MongoInterface) RetrieveConversation(username string, title string) (*C
 	return &convo, nil
 }
 
+// Retrieves all the Conversations topics attached to a User
 func (s *MongoInterface) RetrieveConversations(user UserData) ([]Conversation, error) {
 	conversations := make([]Conversation, len(user.ConversationIDs))
 
 	for i, title := range user.ConversationIDs {
 		convo, err := s.RetrieveConversation(user.Username, title)
 		if err != nil {
-			return conversations, err
+			return conversations, fmt.Errorf("unable to find User when retrieving conversation titles: %w", err)
 		}
 		conversations[i] = *convo
 	}
@@ -232,7 +243,12 @@ func (s *MongoInterface) RetrieveConversations(user UserData) ([]Conversation, e
 	return conversations, nil
 }
 
+// Retrieves all the Conversations titles attached to a User
 func (s *MongoInterface) RetrieveConversationTitles(userName string) []string {
-	user := s.findUser(userName)
+	user, err := s.findUser(userName)
+	if err != nil {
+		fmt.Println("unable to find User when retrieving conversation titles:", err)
+		return make([]string, 0)
+	}
 	return user.ConversationIDs
 }

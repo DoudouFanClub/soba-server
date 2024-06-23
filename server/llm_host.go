@@ -19,7 +19,7 @@ var b = balancer.CreateBalancer()
 func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db int) (*LLM_Host, error) {
 
 	// Init MongoDb Connection
-	mongo_svr, err_1 := database.CreateMongoMongoInterface(databaseUri)
+	mongo_svr, err_1 := database.CreateMongoInterface(databaseUri)
 	if err_1 != nil {
 		return nil, err_1
 	}
