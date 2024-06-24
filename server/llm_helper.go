@@ -7,13 +7,12 @@ import (
 )
 
 func AllowCors(w http.ResponseWriter) {
-
+	// Specify Content Type to receive as Json Format
 	w.Header().Set("Content-Type", "application/json")
-
-	// Set CORS headers to allow requests from all origins
+	// Set CORS headers to allow requests from all origins - Different Ports
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	//w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Allow POST requests
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Allow Content-Type header
+	// Allow Content-Type header
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 }
 
 
@@ -34,10 +33,9 @@ func ParseJson(w http.ResponseWriter, jsonField ...map[string]interface{}) bool 
 		return false
 	}
 
-	// Write the JSON response to the http.ResponseWriter
+	// Write the JSON response
 	_, err = w.Write(jsonResponse)
 	if err != nil {
-		// Handle the error if unable to write the response
 		fmt.Println("Error writing response:", err)
 		return false
 	}
