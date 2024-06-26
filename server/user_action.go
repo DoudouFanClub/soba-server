@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"llm_server/balancer"
 	"llm_server/cache"
 	"llm_server/database"
 	"net/http"
@@ -71,8 +72,14 @@ func handleDeleteChat(mongoClient *database.MongoInterface, redisClient *cache.R
 	}
 }
 
-func handleSendMessage(mongoClient *database.MongoInterface, redisClient *cache.RedisCache) http.HandlerFunc {
+func handleSendMessage(mongoClient *database.MongoInterface, redisClient *cache.RedisCache, b *balancer.Balancer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+
+		// New
+		w.Header().Set("Content-Type", "text/event-stream")
+		//w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+
 		AllowCors(w)
 		defer r.Body.Close()
 
@@ -89,12 +96,13 @@ func handleSendMessage(mongoClient *database.MongoInterface, redisClient *cache.
 		// Retrieve the last message (User Prompt) & Insert it into Redis Cache
 		lastUserPrompt := userPrompt.Contents[len(userPrompt.Contents)-1].Content
 		redisClient.AddMessageToConversation(mongoClient, userPrompt.Username, userPrompt.Title, database.Message{Role: "User", Content: lastUserPrompt})
-		fmt.Println("added message to convo")
+		fmt.Println("added message to convo", lastUserPrompt)
 
 		// Send to LLM
-		success, result := ReceiveMessage(&w, r, &b)
+		success, result := ReceiveMessage(&w, lastUserPrompt, b)
 		// Wait and append to cache once done
 		if success {
+			fmt.Println(result)
 			redisClient.AddMessageToConversation(mongoClient, userPrompt.Username, userPrompt.Title, database.Message{Role: "assistant", Content: result})
 		} else {
 			fmt.Println("Failed to retrieve complete prompt from LLM")

@@ -9,13 +9,17 @@ type Balancer struct {
 	availables Queue[socket.Endpoint]
 }
 
-func CreateBalancer() Balancer {
+func CreateBalancer() *Balancer {
 	q := NewQueue[socket.Endpoint]()
-	return Balancer{availables: q}
+	return &Balancer{availables: q}
 }
 
 func (b *Balancer) Available() bool {
 	return b.availables.Empty()
+}
+
+func (b * Balancer) Add(endpt socket.Endpoint) {
+	b.availables.Add(endpt)
 }
 
 func (b *Balancer) Send(msg []byte, w *http.ResponseWriter) (bool, string) {

@@ -4,6 +4,7 @@ import (
 	"llm_server/balancer"
 	"llm_server/cache"
 	"llm_server/database"
+	"llm_server/socket"
 	"net/http"
 )
 
@@ -11,8 +12,6 @@ type LLM_Host struct {
 	MongoClient *database.MongoInterface
 	RedisClient *cache.RedisCache
 }
-
-var b = balancer.CreateBalancer()
 
 func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db int) (*LLM_Host, error) {
 
@@ -28,6 +27,14 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 		return nil, err_2
 	}
 
+	b := balancer.CreateBalancer()
+	endpt := socket.Endpoint {
+		Ip: "localhost",
+		Port: "7060",
+	}
+
+	b.Add(endpt)
+	
 	// Server Access Callbacks
 	http.HandleFunc("/login", handleLogin(mongoClient))
 	http.HandleFunc("/logout", handleLogout(mongoClient, redisClient))
@@ -37,7 +44,7 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 	http.HandleFunc("/new_chat", handleNewChat(mongoClient))
 	//http.HandleFunc("/rename_chat", handleRenameChat(mongoClient, redisClient))
 	//http.HandleFunc("/delete_chat", handleRenameChat(mongoClient, redisClient))
-	http.HandleFunc("/send_message", handleSendMessage(mongoClient, redisClient))
+	http.HandleFunc("/send_message", handleSendMessage(mongoClient, redisClient, b))
 	
 	// Server Action Callbacks
 	http.HandleFunc("/load_chat", handleLoadChat(mongoClient, redisClient))
