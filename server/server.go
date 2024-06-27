@@ -41,10 +41,11 @@ func RegisterUser(w http.ResponseWriter, r *http.Request, m *database.MongoInter
 // This also needs to manage the availability of the llm inferer
 // pseudo load balancer and message queue needs to be used here
 // caching the users prompt and the llm's reply
-func ReceiveMessage(w *http.ResponseWriter, user_msg string, b *balancer.Balancer) (bool, string) {
+func ReceiveMessage(w *http.ResponseWriter, userChatHistory []database.Message, b *balancer.Balancer) (bool, string) {
 
-	fmt.Println("Receive Message:", user_msg)
-	user_msg += "<doudousmacksoba>"
+	fmt.Println("Receive Message History:", userChatHistory)
+	chatHistoryBytes, _ := json.Marshal(userChatHistory)
+	chatHistoryStr := string(chatHistoryBytes) + "<doudousmacksoba>"
 	// this shouldn't be a blocking call as the net/http documentation
 	// says that each request is done on a different goroutine
 	for !b.Available() {
@@ -52,5 +53,5 @@ func ReceiveMessage(w *http.ResponseWriter, user_msg string, b *balancer.Balance
 		time.Sleep(3 * time.Second)
 	}
 
-	return b.Send([]byte(user_msg), w)
+	return b.Send([]byte(chatHistoryStr), w)
 }

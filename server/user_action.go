@@ -6,6 +6,7 @@ import (
 	"llm_server/balancer"
 	"llm_server/cache"
 	"llm_server/database"
+	"llm_server/helper"
 	"net/http"
 )
 
@@ -87,19 +88,30 @@ func handleSendMessage(mongoClient *database.MongoInterface, redisClient *cache.
 			return
 		}
 
-		var userPrompt database.FrontendMessagesPrompt
+		//var userPrompt database.FrontendMessagesPrompt
+		var userPrompt database.MessagePrompt
 		if err := json.NewDecoder(r.Body).Decode(&userPrompt); err != nil {
 			http.Error(w, "Error decoding prompt", http.StatusBadRequest)
 			return
 		}
-
+		fmt.Println("User Prompt: ", userPrompt)
 		// Retrieve the last message (User Prompt) & Insert it into Redis Cache
-		lastUserPrompt := userPrompt.Contents[len(userPrompt.Contents)-1].Content
-		redisClient.AddMessageToConversation(mongoClient, userPrompt.Username, userPrompt.Title, database.Message{Role: "User", Content: lastUserPrompt})
-		fmt.Println("added message to convo", lastUserPrompt)
+		redisClient.AddMessageToConversation(mongoClient, userPrompt.Username, userPrompt.Title, database.Message{Role: "user", Content: userPrompt.Contents.Content})
+		fmt.Println("added message to convo", userPrompt.Contents.Content)
+
+		// Rearranging index of titles
+		userTitles := mongoClient.RetrieveConversationTitles(userPrompt.Username)
+		currentTitleIndex := mongoClient.RetrieveTitleIndex(userPrompt.Username, userPrompt.Title, userTitles)
+		updatedTitles := helper.MoveCurrentIndexToFront(userTitles, currentTitleIndex)
+		mongoClient.UpdateUser(userPrompt.Username, updatedTitles)
+
+		convo, err := redisClient.GetDataConversation(mongoClient, userPrompt.Username, userPrompt.Title)
+		if err != nil {
+			fmt.Println("unable to retrieve conversation data from:", userPrompt.Title, " | err:", err)
+		}
 
 		// Send to LLM
-		success, result := ReceiveMessage(&w, lastUserPrompt, b)
+		success, result := ReceiveMessage(&w, convo.Messages, b) // have to replace this later
 		// Wait and append to cache once done
 		if success {
 			fmt.Println(result)

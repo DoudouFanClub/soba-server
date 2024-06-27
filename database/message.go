@@ -1,18 +1,18 @@
 package database
 
 type Message struct {
-	Role    string `bson:"role"`
-	Content string `bson:"content"`
+	Role    string `json:"role" bson:"role"`
+	Content string `json:"content" bson:"content"`
 }
 
 type MessagePrompt struct {
-	Username string `bson:"username"`
-	Title    string `bson:"title"`
-	Content  string `bson:"content"`
+	Username string  `bson:"username"`
+	Title    string  `bson:"title"`
+	Contents Message `bson:"content"`
 }
 
 type FrontendMessagesPrompt struct {
-	Username string    `bson:"username"`
-	Title    string    `bson:"title"`
-	Contents []Message `bson:"contents"`
+	Username string    `json:"username" bson:"username"`
+	Title    string    `json:"title" bson:"title"`
+	Contents []Message `json:"contents" bson:"contents"`
 }

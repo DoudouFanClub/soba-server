@@ -12,7 +12,6 @@ func handleLoadChat(mongoClient *database.MongoInterface, redisClient *cache.Red
 	return func(w http.ResponseWriter, r *http.Request) {
 		AllowCors(w)
 		defer r.Body.Close()
-
 		if r.Method == "OPTIONS" {
 			return
 		}
@@ -22,7 +21,19 @@ func handleLoadChat(mongoClient *database.MongoInterface, redisClient *cache.Red
 			http.Error(w, "Invalid request payload", http.StatusBadRequest)
 			return
 		}
-
+		
+		if loadConvo.PrevTitle != "" {
+			prev_convo, err := redisClient.GetDataConversation(mongoClient, loadConvo.Username, loadConvo.PrevTitle)
+			if err != nil {
+				http.Error(w, "Unable to save previous conversation", http.StatusBadRequest)
+				return
+			}
+			if mongoClient.InsertConversation(loadConvo.Username, *prev_convo) != nil {
+				http.Error(w, "Stop being noob", http.StatusBadRequest)
+			}
+	
+		}
+		
 		var convo database.Conversation
 		convoExist := mongoClient.DoesConvoExist(loadConvo.Username, loadConvo.Title)
 		if convoExist {

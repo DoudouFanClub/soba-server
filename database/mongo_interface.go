@@ -47,7 +47,7 @@ func (s *MongoInterface) findUser(username string) (*UserData, error) {
 }
 
 // Updates user messages in MongoDB
-func (s *MongoInterface) updateUser(username string, messages []string) error {
+func (s *MongoInterface) UpdateUser(username string, messages []string) error {
 	filter := bson.M{"username": username}
 	update := bson.M{"$set": bson.M{"conversations": messages}}
 	coll := s.MongoClient.Database("UserData").Collection("Users")
@@ -251,4 +251,8 @@ func (s *MongoInterface) RetrieveConversationTitles(userName string) []string {
 		return make([]string, 0)
 	}
 	return user.ConversationIDs
+}
+
+func (s *MongoInterface) UpdateTitlesIndex(usetName string, titles []string) {
+
 }

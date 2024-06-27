@@ -93,7 +93,7 @@ func (r *RedisCache) AddMessageToConversation(mongoInterface *database.MongoInte
 	return r.LoadConversationData(key, msg)
 }
 
-// Retrieves conversation data from the Redis cache
+// Retrieves conversation data from the Redis cache - Modify this later
 func (r *RedisCache) GetDataMsgArray(mongoInterface *database.MongoInterface, username string, title string) (*[]database.Message, error) {
 	key := fmt.Sprintf(redisKeyFormat, username, title)
 	val, err := r.client.Get(context.TODO(), key).Bytes()

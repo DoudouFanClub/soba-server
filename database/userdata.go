@@ -25,7 +25,7 @@ func (s *MongoInterface) InsertConversationId(username string, conversation Conv
 	}
 
 	user.ConversationIDs = append(user.ConversationIDs, conversation.Title)
-	return s.updateUser(username, user.ConversationIDs)
+	return s.UpdateUser(username, user.ConversationIDs)
 }
 
 // Removes a conversation ID from a user's list of conversation IDs
@@ -65,4 +65,14 @@ func (s *MongoInterface) DeleteConversationId(username string, title string) err
 	}
 
 	return nil
+}
+
+
+func (s *MongoInterface) RetrieveTitleIndex(username string, title string, userTitles []string) int {
+	for index, value := range userTitles {
+		if value == title{
+			return index
+		}
+	}
+	return -1
 }

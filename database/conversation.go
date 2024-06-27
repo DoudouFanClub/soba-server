@@ -1,19 +1,20 @@
 package database
 
 type ConversationRequest struct {
-	Username string `bson:"username"`
-	Title    string `bson:"title"`
+	Username  string `json:"username" bson:"username"`
+	Title     string `json:"title" bson:"title"`
+	PrevTitle string `json:"prevtitle" bson:"prevtitle"`
 	// need to add a new field to specify the model
 }
 
 type ConversationTitlesRequest struct {
-	Username string   `bson:"username"`
-	Titles   []string `bson:"titles"`
+	Username string   `json:"username" bson:"username"`
+	Titles   []string `json:"titles" bson:"titles"`
 }
 
 type Conversation struct {
-	Title    string    `bson:"title"`
-	Messages []Message `bson:"messages"`
+	Title    string    `json:"title" bson:"title"`
+	Messages []Message `json:"messages" bson:"messages"`
 }
 
 func SetConversationId(conversation *Conversation, title string) {
