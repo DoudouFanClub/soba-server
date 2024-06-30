@@ -24,7 +24,9 @@ func (s *MongoInterface) InsertConversationId(username string, conversation Conv
 		return fmt.Errorf("unable to insert conversation ID (user not registered): %w", err)
 	}
 
-	user.ConversationIDs = append(user.ConversationIDs, conversation.Title)
+	user.ConversationIDs = append(user.ConversationIDs, "")
+	copy(user.ConversationIDs[1:], user.ConversationIDs)
+	user.ConversationIDs[0] = conversation.Title
 	return s.UpdateUser(username, user.ConversationIDs)
 }
 
