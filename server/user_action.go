@@ -62,7 +62,7 @@ func handleDeleteChat(mongoClient *database.MongoInterface, redisClient *cache.R
 	return func(w http.ResponseWriter, r *http.Request) {
 		AllowCors(w)
 		defer r.Body.Close()
-		
+
 		if r.Method == "OPTIONS" {
 			return
 		}
@@ -114,7 +114,6 @@ func handleSendMessage(mongoClient *database.MongoInterface, redisClient *cache.
 		success, result := ReceiveMessage(&w, convo.Messages, b) // have to replace this later
 		// Wait and append to cache once done
 		if success {
-			fmt.Println(result)
 			redisClient.AddMessageToConversation(mongoClient, userPrompt.Username, userPrompt.Title, database.Message{Role: "assistant", Content: result})
 		} else {
 			fmt.Println("Failed to retrieve complete prompt from LLM")

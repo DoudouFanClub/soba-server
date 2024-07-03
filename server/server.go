@@ -48,10 +48,22 @@ func ReceiveMessage(w *http.ResponseWriter, userChatHistory []database.Message, 
 	chatHistoryStr := string(chatHistoryBytes) + "<doudousmacksoba>"
 	// this shouldn't be a blocking call as the net/http documentation
 	// says that each request is done on a different goroutine
+	tries := 20
 	for !b.Available() {
 		// wait 3 seconds before polling again
 		time.Sleep(3 * time.Second)
+		tries -= 1
+		// keep trying to send for 1 minute, else drop out temporarily
+		if tries < 0 {
+			fmt.Println("Connection timed out")
+			return false, ""
+		}
 	}
 
-	return b.Send([]byte(chatHistoryStr), w)
+	success, msg := b.Send([]byte(chatHistoryStr), w)
+	if !success {
+		return false, msg
+	}
+
+	return success, msg
 }
