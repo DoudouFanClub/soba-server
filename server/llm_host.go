@@ -1,16 +1,23 @@
 package server
 
 import (
+	"encoding/json"
+	"fmt"
 	"llm_server/balancer"
 	"llm_server/cache"
 	"llm_server/database"
 	"llm_server/socket"
 	"net/http"
+	"os"
 )
 
 type LLM_Host struct {
 	MongoClient *database.MongoInterface
 	RedisClient *cache.RedisCache
+}
+
+type EndpointConfig struct {
+	EndpointsData []socket.Endpoint `json:"endpoints_data"`
 }
 
 func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db int) (*LLM_Host, error) {
@@ -28,12 +35,21 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 	}
 
 	b := balancer.CreateBalancer()
-	endpt := socket.Endpoint {
-		Ip: "localhost",
-		Port: "7060",
-	}
+	
 
-	b.Add(endpt)
+	file, _ := os.Open("config/endpoints.cfg")
+	defer file.Close()
+	decoder := json.NewDecoder(file)
+	configuration := EndpointConfig{}
+	err := decoder.Decode(&configuration)
+	if err != nil {
+		fmt.Println("error:", err)
+	}
+	fmt.Println(configuration)
+	
+	for _, val := range configuration.EndpointsData {
+		b.Add(val)
+	}
 	
 	// Server Access Callbacks
 	http.HandleFunc("/login", handleLogin(mongoClient))

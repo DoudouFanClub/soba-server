@@ -10,8 +10,8 @@ import (
 
 // Holds the endpoint info incase there is multiple llm instances
 type Endpoint struct {
-	Ip   string
-	Port string
+	Ip   string `json:"ip"`
+	Port string `json:"port"`
 }
 
 // passes in a reference buffer to read from
@@ -56,13 +56,11 @@ func (e *Endpoint) SendMessage(message []byte, w *http.ResponseWriter) (bool, st
 		copy(chunk, buf[:n])
 		result += string(chunk)
 
-		bytesWritten, err := fmt.Fprintf(*w, "%s", chunk)
+		_, err2 := fmt.Fprintf(*w, "%s", chunk)
 		//fmt.Println("Buffer to be sent:", buf[:n])
 		flusher.Flush()
 
-		if err == nil {
-			fmt.Println("Number of bytes written to frontend:", bytesWritten)
-		} else {
+		if err2 != nil {
 			fmt.Println("Error sending message to frontend: ", err)
 		}
 	}
