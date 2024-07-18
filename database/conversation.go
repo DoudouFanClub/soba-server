@@ -17,6 +17,11 @@ type Conversation struct {
 	Messages []Message `json:"messages" bson:"messages"`
 }
 
+type RemoveConversation struct {
+	Username string `json:"username" bson:"username"`
+	Title    string `json:"title" bson:"title"`
+}
+
 func SetConversationId(conversation *Conversation, title string) {
 	conversation.Title = title
 }

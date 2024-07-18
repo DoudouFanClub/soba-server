@@ -31,7 +31,7 @@ func (s *MongoInterface) InsertConversationId(username string, conversation Conv
 }
 
 // Removes a conversation ID from a user's list of conversation IDs
-func removeConversationId(user *UserData, titleToRemove string) error {
+func (s *MongoInterface) removeConversationId(user *UserData, titleToRemove string) error {
 	index := -1
 	for i, title := range user.ConversationIDs {
 		if title == titleToRemove {
@@ -47,6 +47,8 @@ func removeConversationId(user *UserData, titleToRemove string) error {
 	// Remove the conversation ID by shifting elements to the left and reducing the slice size by 1.
 	copy(user.ConversationIDs[index:], user.ConversationIDs[index+1:])
 	user.ConversationIDs = user.ConversationIDs[:len(user.ConversationIDs)-1]
+	s.UpdateUser(user.Username, user.ConversationIDs)
+
 	return nil
 }
 
@@ -61,7 +63,7 @@ func (s *MongoInterface) DeleteConversationId(username string, title string) err
 		return fmt.Errorf("failed to find user: %w", err)
 	}
 
-	err = removeConversationId(&user, title)
+	err = s.removeConversationId(&user, title)
 	if err != nil {
 		return err
 	}

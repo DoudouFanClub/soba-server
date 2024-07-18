@@ -58,8 +58,8 @@ func InitLLMHost(databaseUri string, redisAddr string, redisPassword string, db 
 
 	// User Action Callbacks
 	http.HandleFunc("/new_chat", handleNewChat(mongoClient))
-	//http.HandleFunc("/rename_chat", handleRenameChat(mongoClient, redisClient))
-	//http.HandleFunc("/delete_chat", handleRenameChat(mongoClient, redisClient))
+	http.HandleFunc("/rename_chat", handleRenameChat(mongoClient, redisClient))
+	http.HandleFunc("/delete_chat", handleDeleteChat(mongoClient, redisClient))
 	http.HandleFunc("/send_message", handleSendMessage(mongoClient, redisClient, b))
 	
 	// Server Action Callbacks

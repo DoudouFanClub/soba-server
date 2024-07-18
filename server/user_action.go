@@ -66,10 +66,23 @@ func handleDeleteChat(mongoClient *database.MongoInterface, redisClient *cache.R
 		if r.Method == "OPTIONS" {
 			return
 		}
+		
+		var removeConvo database.RemoveConversation
+		if err := json.NewDecoder(r.Body).Decode(&removeConvo); err != nil {
+			http.Error(w, "Invalid request payload", http.StatusBadRequest)
+			fmt.Println("Unable to receive a valid payload")
+			return
+		}
+		
+		if convoExist := mongoClient.DoesConvoExist(removeConvo.Username, removeConvo.Title); convoExist {
+			if delErr := mongoClient.DeleteConversation(removeConvo.Username, removeConvo.Title); delErr != nil {
+				fmt.Println("Unable to delete conversation from ConversationData...", delErr)
+			}
+		}
 
-		// check if loaded in cache
-		//     if yes, clear username_title from cache
-		// clear database
+		if redisErr := redisClient.UnloadConversation(removeConvo.Username, removeConvo.Title); redisErr != nil {
+			fmt.Println("Unable to unload conversation from redis... Conversation may not be active.", redisErr)
+		}
 	}
 }
 

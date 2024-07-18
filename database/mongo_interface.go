@@ -208,6 +208,8 @@ func (s *MongoInterface) DeleteConversation(username string, title string) error
 
 	if result.DeletedCount != 1 {
 		return fmt.Errorf("expected 1 document to be deleted, got %d", result.DeletedCount)
+	} else if result.DeletedCount == 1 {
+		fmt.Println("Successfully deleted", title, "from", username)
 	}
 
 	return nil
