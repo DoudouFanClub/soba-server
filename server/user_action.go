@@ -69,7 +69,7 @@ func handleDeleteChat(mongoClient *database.MongoInterface, redisClient *cache.R
 
 		var serverResponse string
 		serverResponse = "success"
-		
+
 		var removeConvo database.RemoveConversation
 		if err := json.NewDecoder(r.Body).Decode(&removeConvo); err != nil {
 			http.Error(w, "Invalid request payload", http.StatusBadRequest)
@@ -77,14 +77,14 @@ func handleDeleteChat(mongoClient *database.MongoInterface, redisClient *cache.R
 			serverResponse = "failure"
 			return
 		}
-		
+
 		if convoExist := mongoClient.DoesConvoExist(removeConvo.Username, removeConvo.Title); convoExist {
 			if delErr := mongoClient.DeleteConversation(removeConvo.Username, removeConvo.Title); delErr != nil {
 				fmt.Println("Unable to delete conversation from ConversationData...", delErr)
 				serverResponse = "failure"
 			}
 		}
-		
+
 		if redisErr := redisClient.UnloadConversation(removeConvo.Username, removeConvo.Title); redisErr != nil {
 			fmt.Println("Unable to unload conversation from redis... Conversation may not be active.", redisErr)
 			serverResponse = "failure"
@@ -141,8 +141,18 @@ func handleSendMessage(mongoClient *database.MongoInterface, redisClient *cache.
 		// Wait and append to cache once done
 		if success {
 			redisClient.AddMessageToConversation(mongoClient, userPrompt.Username, userPrompt.Title, database.Message{Role: "assistant", Content: result})
+
+			// Update the MongoDB's Conversation History Immediately After We Complete The Response
+			conversation := mongoClient.GetConvo(userPrompt.Username, userPrompt.Title)
+			newResponse := database.Message{
+				Role:    "assistant",
+				Content: result,
+			}
+			conversation.Messages = append(conversation.Messages, userPrompt.Contents, newResponse)
+			mongoClient.InsertConversation(userPrompt.Username, conversation)
 		} else {
 			fmt.Println("Failed to retrieve complete prompt from LLM")
 		}
+
 	}
 }
